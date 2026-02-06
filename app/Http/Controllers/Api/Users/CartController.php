@@ -11,6 +11,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Coupon;
+use App\Models\Platform;
+
 use Throwable;
 
 class CartController extends Controller
@@ -221,25 +224,56 @@ class CartController extends Controller
     {
         return (int) $cart->items->sum('quantity');
     }
+private function formatCartItem(CartItem $item): array
+{
+   
+    $pricing = PlatformPricing::where([
+            'platform_product_id' => $item->platform_id,
+            'product_variant_id'  => $item->product_variant_id,
+            'status' => 'active',
+        ])
+        ->with(['variant.variant', 'variant.value'])
+        ->first();
 
-    private function formatCartItem(CartItem $item): array
-    {
-        return [
-            'id' => $item->id,
-            'product_id' => $item->product_id,
-            'variant_id' => $item->product_variant_id,
-            'platform_id' => $item->platform_id,
-            'product_name' => $item->product?->name,
-            'variant' => [
-                'type' => $item->variant?->variant_type,
-                'value' => $item->variant?->variant_value,
-            ],
-            'price' => $item->price,
-            'quantity' => $item->quantity,
-            'subtotal' => $item->subtotal,
-            'image_url' => $item->product?->image_url,
-        ];
+    $type  = null;
+    $value = null;
+
+    if ($pricing && $pricing->variant) {
+        $type  = $pricing->variant->variant?->name;
+        $value = $pricing->variant->value?->value;
     }
+
+    if (!$type || !$value) {
+        $productVariant = $item->product
+            ?->variants
+            ?->firstWhere('id', $item->product_variant_id);
+
+        if ($productVariant) {
+            $type  = $productVariant->variant?->name;
+            $value = $productVariant->value?->value;
+        }
+    }
+
+    return [
+        'id' => $item->id,
+        'product_id' => $item->product_id,
+        'variant_id' => $item->product_variant_id,
+        'platform_id' => $item->platform_id,
+        'product_name' => $item->product?->name,
+
+        // ✅ NEVER NULL NOW (as long as product has variants)
+        'variant' => [
+            'type'  => $type,
+            'value' => $value,
+        ],
+
+        'price' => $item->price,
+        'quantity' => $item->quantity,
+        'subtotal' => $item->subtotal,
+        'image_url' => $item->product?->image_url,
+    ];
+}
+
 
     private function emptyCartResponse(): JsonResponse
     {
@@ -289,4 +323,161 @@ class CartController extends Controller
             ]
         ]);
     }
+
+
+public function applyCoupon(Request $request): JsonResponse
+{
+    $request->validate([
+        'coupon_code' => 'required|string',
+        'bank_id'     => 'nullable|integer',
+        'card_type'   => 'nullable|in:credit,debit,emi',
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        $cart = $this->getOrCreateCart();
+        $cart->load('items');
+
+        if ($cart->items->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cart is empty',
+            ], 422);
+        }
+
+        /* ---------- platform ---------- */
+        $platformKey = $request->header('X-Platform');
+
+        $platform = Platform::where('name', $platformKey)
+            ->where('is_enabled', true)
+            ->where('status', 'active')
+            ->firstOrFail();
+
+        /* ---------- cart total ---------- */
+        $cartTotal = $this->cartTotal($cart);
+
+        /* ---------- coupon ---------- */
+        $coupon = Coupon::where('code', $request->coupon_code)
+            ->where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('starts_at')
+                  ->orWhere('starts_at', '<=', now());
+            })
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>=', now());
+            })
+            ->whereHas('platforms', fn ($q) =>
+                $q->where('platforms.id', $platform->id)
+            )
+            ->first();
+
+        if (!$coupon) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired coupon',
+            ], 422);
+        }
+
+        if ($coupon->min_cart_amount && $cartTotal < $coupon->min_cart_amount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Minimum cart amount not met',
+            ], 422);
+        }
+
+        /* ---------- coupon discount ---------- */
+        $couponDiscount = $coupon->type === 'fixed'
+            ? $coupon->value
+            : ($cartTotal * $coupon->value / 100);
+
+        if ($coupon->max_discount) {
+            $couponDiscount = min($couponDiscount, $coupon->max_discount);
+        }
+
+        /* ---------- bank discount (optional) ---------- */
+        $bankDiscount = 0;
+
+        if ($request->bank_id && $request->card_type) {
+            $bankOffer = $coupon->bankOffers()
+                ->where('bank_id', $request->bank_id)
+                ->where('card_type', $request->card_type)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$bankOffer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid bank offer',
+                ], 422);
+            }
+
+            $bankDiscount = $bankOffer->type === 'fixed'
+                ? $bankOffer->value
+                : ($cartTotal * $bankOffer->value / 100);
+
+            if ($bankOffer->max_discount) {
+                $bankDiscount = min($bankDiscount, $bankOffer->max_discount);
+            }
+        }
+
+        /* ---------- save on cart (NO cart logic touched) ---------- */
+        $cart->coupon_id       = $coupon->id;
+        $cart->coupon_code     = $coupon->code;
+        $cart->coupon_discount = round($couponDiscount, 2);
+        $cart->bank_discount   = round($bankDiscount, 2);
+        $cart->save();
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Coupon applied successfully',
+            'data' => [
+                'cart_total'     => $cartTotal,
+                'coupon_discount'=> round($couponDiscount, 2),
+                'bank_discount'  => round($bankDiscount, 2),
+                'payable_amount' => max(
+                    $cartTotal - ($couponDiscount + $bankDiscount),
+                    0
+                ),
+            ],
+        ]);
+
+    } catch (Throwable $e) {
+        DB::rollBack();
+        return $this->errorResponse('Apply Coupon API Error', $e);
+    }
+}
+
+public function removeCoupon(): JsonResponse
+{
+    try {
+        DB::beginTransaction();
+
+        $cart = $this->getOrCreateCart();
+
+        $cart->coupon_id       = null;
+        $cart->coupon_code     = null;
+        $cart->coupon_discount= null;
+        $cart->bank_discount  = null;
+        $cart->save();
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Coupon removed successfully',
+            'data' => [
+                'cart_total' => $this->cartTotal($cart),
+                'items_count'=> $this->cartItemsCount($cart),
+            ],
+        ]);
+
+    } catch (Throwable $e) {
+        DB::rollBack();
+        return $this->errorResponse('Remove Coupon API Error', $e);
+    }
+}
 }

@@ -49,6 +49,18 @@ class Platform extends Model
             ->where('status', 'active')
             ->first();
     }
+public function coupons()
+{
+    return $this->belongsToMany(Coupon::class, 'coupon_platform');
+}
+
+public function couponBankOffers()
+{
+    return $this->belongsToMany(
+        CouponBankOffer::class,
+        'coupon_bank_offer_platform'
+    );
+}
 
 
 }

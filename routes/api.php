@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Users\AuthController;
 use App\Http\Controllers\Api\Users\CartController;
 use App\Http\Controllers\Api\Users\AddressController;
 use App\Http\Controllers\Api\Users\ProfileController;
+use App\Http\Controllers\Api\Users\CouponController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -53,6 +54,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/cart', [CartController::class, 'index']);
     Route::put('/cart/update/{cart_item}', [CartController::class, 'update']);
     Route::delete('/cart/remove/{cart_item}', [CartController::class, 'remove']);
+    Route::post('/cart/apply-coupon', [CartController::class, 'applyCoupon']);
+    Route::post('/cart/remove-coupon', [CartController::class, 'removeCoupon']);
 
     Route::get('/user/addresses', [AddressController::class, 'index']);
     Route::post('/user/addresses', [AddressController::class, 'store']);
@@ -69,3 +72,14 @@ Route::get('/categories', [CategoryController::class, 'index']);
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{slug}', [ProductController::class, 'show']);
+
+
+
+Route::prefix('coupons')->group(function () {
+    Route::get('/', [CouponController::class, 'index']);
+    Route::get('/{code}', [CouponController::class, 'show']);
+    Route::get('/{code}/banks', [CouponController::class, 'banks']);
+
+    Route::post('/validate', [CouponController::class, 'validateCoupon']);
+    Route::post('/validate-bank', [CouponController::class, 'validateBank']);
+});

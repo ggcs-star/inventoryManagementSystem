@@ -288,7 +288,7 @@
             id="deleteModalImageBtn"
             class="btn btn-danger btn-sm position-absolute"
             style="top:10px; right:10px; z-index:10">
-            DELETE
+             <i class="fas fa-trash"></i>
         </button>
 
         <span class="modal-nav left">‹</span>
