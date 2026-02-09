@@ -54,7 +54,13 @@ class CartController extends Controller
         try {
             DB::beginTransaction();
 
-            $platformProduct = $this->getPlatformProduct($request->product_id);
+            $platform = Platform::where('name', $request->header('X-Platform'))->firstOrFail();
+
+$platformProduct = $this->getPlatformProduct(
+    $request->product_id,
+    $platform->id
+);
+
             $pricing = $this->getPricing(
                 $platformProduct->id,
                 $request->variant_id,
