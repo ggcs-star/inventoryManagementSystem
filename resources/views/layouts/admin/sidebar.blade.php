@@ -128,14 +128,7 @@
 
     <span>Banners</span>
 </a>
-        <a href="#"
-           class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-100">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6M4 5h16v14H4z" />
-            </svg>
-            <span>Stock Management</span>
-        </a>
-        <a href="{{ admin_route('reels.index') }}"
+<a href="{{ admin_route('reels.index') }}"
    class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
    {{ request()->routeIs('reels.*')
         ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20 font-medium'
@@ -165,7 +158,35 @@
     <span>Orders</span>
 
 </a>
+<a href="{{ admin_route('stock.index') }}"
+   class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+   {{ request()->routeIs('stock.*')
+        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 font-medium'
+        : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' }}">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 7l9-4 9 4-9 4-9-4z"/>
+        <path stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 7v10l9 4 9-4V7"/>
+    </svg>
 
+    <span>Stock Management</span>
+
+</a>
+<a href="{{ admin_route('stock.settings') }}"
+   class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+   {{ request()->routeIs('stock.settings') 
+        ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20 font-medium' 
+        : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' }}">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 16v-2m8-6h-2M6 12H4m13.657-5.657l-1.414 1.414M7.757 16.243l-1.414 1.414M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+    </svg>
+    <span>Stock Alert Settings</span>
+</a>
         <a href="#"
            class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-100">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

@@ -17,7 +17,7 @@ use App\Models\Warehouse;
 use App\Models\Variant;
 use App\Models\VariantValue;
 use Illuminate\Support\Str;
-
+use App\Models\StockMovement;
 
 
 class ProductController extends Controller
@@ -330,7 +330,17 @@ private function handleVariants(Request $request, Product $product): array
             'width'            => $variant['width'] ?? null,
             'image_url'        => $imagePath,
         ]);
-
+        StockMovement::create([
+            'product_id' => $product->id,
+            'variant_id' => $variantId,
+            'platform_id' => 1,
+            'movement' => 'IN',
+            'quantity' => $qty,
+            'balance' => $qty,
+            'reference_type' => 'product_create',
+            'reference_id' => $product->id,
+            'remarks' => 'Initial stock',
+        ]);
 
         $totalPurchase += $qty * $purchase;
         $totalSelling  += $qty * $selling;

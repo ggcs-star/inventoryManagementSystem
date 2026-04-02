@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Organization;
 use Illuminate\Http\Request;
-
+use App\Models\ProductVariant;
+use App\Models\StockMovement;
 class OrderController extends Controller
 {
 
@@ -80,7 +81,7 @@ class OrderController extends Controller
             'status' => 'required|in:pending,confirmed,processing,shipped,delivered,cancelled'
         ]);
 
-        $order = Order::findOrFail($id);
+        $order = Order::with('items')->findOrFail($id);
 
         $currentStatus = strtolower(trim($order->status));
         $newStatus = strtolower(trim($request->status));
@@ -121,6 +122,30 @@ class OrderController extends Controller
         }
 
         $order->save();
+        if ($newStatus === 'confirmed') {
+
+        foreach ($order->items as $item) {
+
+            $variant = ProductVariant::find($item->variant_id);
+
+            if ($variant) {
+
+                $variant->decrement('quantity', $item->quantity);
+
+                StockMovement::create([
+                    'product_id' => $item->product_id,
+                    'variant_id' => $item->variant_id,
+                    'platform_id' => 1,
+                    'movement' => 'OUT',
+                    'quantity' => $item->quantity,
+                    'balance' => $variant->quantity,
+                    'reference_type' => 'order',
+                    'reference_id' => $order->id,
+                    'remarks' => 'Order confirmed',
+                ]);
+            }
+        }
+    }
 
         return back()->with('success', 'Order status updated to ' . ucfirst($newStatus));
     }
