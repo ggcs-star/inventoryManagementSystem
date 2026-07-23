@@ -66,7 +66,7 @@ return [
     'driver' => 'mysql',
     'host' => env('SOCIAL_DB_HOST', '127.0.0.1'),
     'port' => env('SOCIAL_DB_PORT', '3306'),
-    'database' => env('SOCIAL_DB_DATABASE', 'social_db'),
+    'database' => env('SOCIAL_DB_DATABASE', 'retail_grocery'),
     'username' => env('SOCIAL_DB_USERNAME', 'root'),
     'password' => env('SOCIAL_DB_PASSWORD', ''),
     'charset' => 'utf8mb4',

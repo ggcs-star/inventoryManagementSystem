@@ -13,18 +13,19 @@ class DatabaseSeeder extends Seeder
     OrganizationSeeder::class,
     UserSeeder::class,
 
-    CategorySeeder::class,
-    SupplierSeeder::class,
-    ProductSeeder::class,        
-    PlatformSeeder::class,       
+    // CategorySeeder::class,
+    // SupplierSeeder::class,
+    // ProductSeeder::class,       
+    // PlatformSeeder::class,       
 
-    PlatformProductSeeder::class, 
-    PlatformPricingSeeder::class, 
+    // PlatformProductSeeder::class, 
+    // PlatformPricingSeeder::class, 
 
-    WarehouseSeeder::class,
-    BankSeeder::class,
-    CouponSeeder::class,
-    CustomerSeeder::class,
+    // WarehouseSeeder::class,
+    // BankSeeder::class,
+    // CouponSeeder::class,
+    // CustomerSeeder::class,
+    DemoDataSeeder::class,
 ]);
 
     }
